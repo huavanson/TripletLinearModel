@@ -63,7 +63,7 @@ def split_data(df):
 
 def create_dataset(df,hour_look_back):
     features_1 = [f"TotalCon{i}" for i in range(1, hour_look_back + 1)]
-    features_2 = ["Day_of_week"]
+    features_2 = ["Day_of_week","ConsumerType_Area","Year","Month","Day","Hour"]
     features = features_2 + features_1 
     target = "TotalCon"
     X = df[features].values.astype(dtype=float)
@@ -71,14 +71,14 @@ def create_dataset(df,hour_look_back):
     return X, y
 
 
-def get_data_from_hopswork(start_time,end_time):
+def get_data_from_hopswork(start_time,end_time,version):
     features_1 = [f"totalcon{i}" for i in range(1, 24 + 1)]
-    features_2 = ["day_of_week"]
+    features_2 = ["day_of_week","consumertype_area","year","month","day","hour"]
     target = "totalcon"
-    features = features_1 + features_2
-    project = hopsworks.login()
-    fs = project.get_feature_store()
-    fg = fs.get_feature_group("tracking_energy_consumertype_per_hour",version=1)
+    features = features_2 + features_1
+    project = login_hopswork()
+    fs = get_fs(project)
+    fg = get_fg(fs,"tracking_energy_consumertype_per_hour",version=version)
     query = fg.select_all().filter(
                 (fg['hourutc'] >= start_time) &
                 (fg['hourutc'] <= end_time)
@@ -97,8 +97,8 @@ def get_fs(project):
     return project.get_feature_store()
 
 
-def get_fg(fs,fg_name):
-    return fs.get_feature_group(fg_name,version=1)
+def get_fg(fs,fg_name,version):
+    return fs.get_feature_group(fg_name,version=version)
 
 
 def visualize_predictions(model, data_loader, name_figure, path_save_plot):

@@ -64,7 +64,7 @@ def train_process(train_loader, num_epochs, path_save_ckp):
         print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {avg_loss:.4f}")
 
     # End MLflow run
-    mlflow.log_params({"learning_rate": config.lr})
+    mlflow.log_params({"learning_rate": config.lr,"num_epochs": num_epochs})
     mlflow.pytorch.log_model(best_model, "models")
     mlflow.end_run()
     return best_model
@@ -82,12 +82,12 @@ def main():
 
     train_dataset = MyDataset(X_train, y_train)
     train_loader = DataLoader(dataset=train_dataset, batch_size=config.batch_size, shuffle=True)
-    test_dataset = MyDataset(X_test, y_test)
-    test_loader = DataLoader(dataset=test_dataset, batch_size=config.batch_size, shuffle=True)
+    # test_dataset = MyDataset(X_test, y_test)
+    # test_loader = DataLoader(dataset=test_dataset, batch_size=config.batch_size, shuffle=True)
 
-    best_model = train_process(train_loader=train_loader,num_epochs=config.num_epochs,path_save_ckp=config.path_save_ckp)    
+    train_process(train_loader=train_loader,num_epochs=config.num_epochs,path_save_ckp=config.path_save_ckp)    
     
-    visualize_predictions(model=best_model,data_loader=test_loader,name_figure=config.name_figure,path_save_plot=config.path_save_plot)
+    # visualize_predictions(model=best_model,data_loader=test_loader,name_figure=config.name_figure,path_save_plot=config.path_save_plot)
 
 if __name__ == '__main__':
     main()
