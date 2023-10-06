@@ -2,6 +2,7 @@ from model import AirModel, AirModel2
 from dataset import MyDataset
 from utils import *
 from config import Config
+import logging
 
 config = Config()
 
@@ -13,10 +14,12 @@ def train_process(train_loader, num_epochs, path_save_ckp):
     # Define loss function and optimizer
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
-
+    mlflow.set_tracking_uri("http://localhost:5002")
+    
+    logging.getLogger("mlflow").setLevel(logging.DEBUG)
     # Initialize MLflow
     mlflow.start_run()
-    print("hello")
+
     best_val_loss = float("inf")
     check_loss = []
     best_model = copy.deepcopy(model)
@@ -56,13 +59,13 @@ def train_process(train_loader, num_epochs, path_save_ckp):
 
         # Log metrics and parameters with MLflow
         mlflow.log_metric("loss", avg_loss, step=epoch + 1)
-        mlflow.pytorch.autolog()
-        mlflow.pytorch.log_model(model, "models")
 
         # Print epoch information
         print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {avg_loss:.4f}")
 
     # End MLflow run
+    mlflow.log_params({"learning_rate": config.lr})
+    mlflow.pytorch.log_model(best_model, "models")
     mlflow.end_run()
     return best_model
 

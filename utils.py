@@ -15,8 +15,9 @@ import copy
 import torch
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
-
-
+import hopsworks
+from config import Config
+config = Config()
 def parse(x:str):
  return datetime.strptime(x, '%Y %m %d %H')
 
@@ -55,7 +56,6 @@ def feature_extraction(df):
 
 def split_data(df):
     train_size = int(len(df) * 0.9)
-    # test_size = len(df) - train_size
     train, test = df[:train_size], df[train_size:]
     return train, test
 
@@ -63,7 +63,6 @@ def split_data(df):
 
 def create_dataset(df,hour_look_back):
     features_1 = [f"TotalCon{i}" for i in range(1, hour_look_back + 1)]
-    # features_2 = ["ConsumerType_DE35", "PriceArea"]
     features_2 = ["Day_of_week"]
     features = features_2 + features_1 
     target = "TotalCon"
@@ -72,13 +71,43 @@ def create_dataset(df,hour_look_back):
     return X, y
 
 
+def get_data_from_hopswork(start_time,end_time):
+    features_1 = [f"totalcon{i}" for i in range(1, 24 + 1)]
+    features_2 = ["day_of_week"]
+    target = "totalcon"
+    features = features_1 + features_2
+    project = hopsworks.login()
+    fs = project.get_feature_store()
+    fg = fs.get_feature_group("tracking_energy_consumertype_per_hour",version=1)
+    query = fg.select_all().filter(
+                (fg['hourutc'] >= start_time) &
+                (fg['hourutc'] <= end_time)
+            ).read()
+    X = query[features].values.astype(dtype=float)
+    y = query[target].values.astype(dtype=float)
+    return X,y
+
+
+def login_hopswork():
+    project = hopsworks.login()
+    return project
+
+
+def get_fs(project):
+    return project.get_feature_store()
+
+
+def get_fg(fs,fg_name):
+    return fs.get_feature_group(fg_name,version=1)
+
+
 def visualize_predictions(model, data_loader, name_figure, path_save_plot):
-    model.eval()
+    # model.eval()
     with torch.no_grad():
         for x_batch, y_batch in data_loader:
             # Forward pass to get predictions
-            outputs = model(x_batch)
-            predictions = outputs.numpy()  # Assuming predictions are 1D
+            outputs = model.predict(x_batch.numpy())
+            predictions = abs(outputs)  # Assuming predictions are 1D
 
             # Ground truth values (y_batch)
             ground_truth = y_batch.numpy()
@@ -89,7 +118,7 @@ def visualize_predictions(model, data_loader, name_figure, path_save_plot):
             plt.plot(predictions, label="Predictions", marker="o", linestyle="--")
             plt.xlabel("Time Step")
             plt.ylabel("Value")
-            plt.title(f"Model Predictions vs Ground Truth - hello Data")
+            plt.title(f"Model Predictions vs Ground Truth")
             plt.legend()
             plt.show()
             plt.savefig(f"{path_save_plot}/{name_figure}.png")
